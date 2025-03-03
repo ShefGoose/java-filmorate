@@ -45,6 +45,7 @@ public class UserController {
         Integer currentMaxId = users.keySet().stream().mapToInt(id -> id).max().orElse(0);
         return ++currentMaxId;
     }
+
     private void validateUser(User user) {
         if (user.getLogin().contains(" ")) {
             log.warn("Получен следующий логин: {}", user.getLogin());
