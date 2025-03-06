@@ -66,12 +66,13 @@ public class FilmController {
             throw new ValidationException("Дата релиза раньше 12 декабря 1895 года");
         }
     }
+
     private void validateUpdateFilm(Film film) {
         if (film.getName().isEmpty()) {
             log.warn("Название фильма: {}", film.getName());
             throw new ValidationException("Название фильма не должно быть пустым");
         }
-        if (film.getDescription().length() > MAX_SIZE_DESCRIPTION ) {
+        if (film.getDescription().length() > MAX_SIZE_DESCRIPTION) {
             log.warn("Длина описания фильма: {}", film.getDescription().length());
             throw new ValidationException("Длина описания превышает 200 символов");
         }
