@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.util.UtilController;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.*;
 public class FilmController {
     private final Map<Integer, Film> films = new HashMap<>();
     private static final LocalDate MOVIE_BIRTHDAY = LocalDate.of(1895, 12, 28);
+    private static final int MAX_SIZE_DESCRIPTION = 200;
 
     @GetMapping
     public List<Film> listFilms() {
@@ -23,23 +25,33 @@ public class FilmController {
 
     @PostMapping
     public Film postFilm(@Valid @RequestBody Film film) {
+        log.info("Получены следущие параметры фильма: название: {}, описание: {}, продолжительность: {}, дата релиза {}",
+                film.getName(), film.getDescription(),
+                film.getDuration(), film.getReleaseDate());
         validateFilm(film);
         film.setId(getNextId());
         films.put(film.getId(), film);
+        log.info("Фильм с названием: {}, успешно добавлен", film.getName());
         return film;
     }
 
     @PutMapping
-    public Film updateFilm(@Valid @RequestBody Film film) {
+    public Film updateFilm(@RequestBody Film film) {
+        log.info("Получены следущие параметры фильма: {}", film.toString());
+
         if (film.getId() == null) {
             throw new ValidationException("Id должен быть указан");
         }
-        validateFilm(film);
-        if (films.containsKey(film.getId())) {
-            films.put(film.getId(), film);
-            return film;
+
+        Film updateFilm = films.get(film.getId());
+        if (updateFilm == null) {
+            throw new NoSuchElementException("Фильм с id = " + film.getId() + " не найден");
         }
-        throw new NoSuchElementException("Фильм с id = " + film.getId() + " не найден");
+        UtilController.merge(film, updateFilm);
+        validateUpdateFilm(updateFilm);
+        films.put(updateFilm.getId(), updateFilm);
+        log.info("Все переданные не null значения фильма с id: {}, успешно обновлены", film.getId());
+        return updateFilm;
     }
 
     private Integer getNextId() {
@@ -53,6 +65,20 @@ public class FilmController {
                     film.getReleaseDate());
             throw new ValidationException("Дата релиза раньше 12 декабря 1895 года");
         }
+    }
+    private void validateUpdateFilm(Film film) {
+        if (film.getName().isEmpty()) {
+            log.warn("Название фильма: {}", film.getName());
+            throw new ValidationException("Название фильма не должно быть пустым");
+        }
+        if (film.getDescription().length() > MAX_SIZE_DESCRIPTION ) {
+            log.warn("Длина описания фильма: {}", film.getDescription().length());
+            throw new ValidationException("Длина описания превышает 200 символов");
+        }
+        validateFilm(film);
+        if (film.getDuration() <= 0) {
+            log.warn("Продолжительность фильма: {}", film.getDuration());
+            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
     }
-
+}
