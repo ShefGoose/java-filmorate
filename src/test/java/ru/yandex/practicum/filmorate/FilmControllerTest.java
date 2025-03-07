@@ -44,21 +44,66 @@ public class FilmControllerTest {
     }
 
     @Test
-    void shouldValidateFilmFail() {
+    void shouldValidateNameFilmFail() {
         film.setName(null);
+        film.setDescription("Good Film");
+        film.setDuration(100);
+        film.setReleaseDate(LocalDate.of(2000, 12, 1));
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "Имя фильма не должно быть пустым");
+    }
+
+    @Test
+    void shouldValidateDescriptionFilmFail() {
+        film.setName("NewFilm");
         film.setDescription(StringUtils.repeat("d", 201));
+        film.setDuration(100);
+        film.setReleaseDate(LocalDate.of(2000, 12, 1));
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "Длина описания превышает 200 символов");
+    }
+
+    @Test
+    void shouldValidateDurationFilmFail() {
+        film.setName("NewFilm");
+        film.setDescription("Good Film");
         film.setDuration(-20);
+        film.setReleaseDate(LocalDate.of(2000, 12, 1));
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "Продолжительность фильма должна быть положительным числом");
+    }
+
+    @Test
+    void shouldValidateReleaseDateFilmFail() {
+        film.setName("NewFilm");
+        film.setDescription("Good Film");
+        film.setDuration(100);
         film.setReleaseDate(null);
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
 
         assertFalse(violations.isEmpty());
-        assertThat(violations).hasSize(4);
+        assertThat(violations).hasSize(1);
         assertThat(violations).extracting(ConstraintViolation::getMessage)
                 .containsExactlyInAnyOrder(
-                        "Имя фильма не должно быть пустым",
-                        "Длина описания превышает 200 символов",
-                        "Продолжительность фильма должна быть положительным числом",
                         "Дата релиза фильма не может быть null");
     }
 
@@ -76,6 +121,22 @@ public class FilmControllerTest {
         assertThat(violations).extracting(ConstraintViolation::getMessage)
                 .containsExactlyInAnyOrder(
                         "Продолжительность фильма не может быть null");
+    }
+
+    @Test
+    void shouldValidateDescriptionNullFail() {
+        film.setName("NewFilm");
+        film.setDescription(null);
+        film.setDuration(100);
+        film.setReleaseDate(LocalDate.of(2000, 12, 1));
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "Описание фильма не может быть null");
     }
 
     @Test

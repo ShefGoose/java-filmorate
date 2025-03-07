@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.util.UtilController;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -47,7 +46,12 @@ public class UserController {
             throw new NoSuchElementException("Пользователь с id = " + user.getId() + " не найден");
         }
 
-        UtilController.merge(user, updateUser);
+        if (!(user.getName() == null)) updateUser.setName(user.getName());
+        if (!(user.getEmail() == null)) updateUser.setEmail(user.getEmail());
+        if (!(user.getLogin() == null))  updateUser.setLogin(user.getLogin());
+        if (!(user.getName() == null))  updateUser.setName(user.getName());
+        if (!(user.getBirthday() == null))  updateUser.setBirthday(user.getBirthday());
+
         validateUpdateUser(updateUser);
         users.put(updateUser.getId(), updateUser);
         log.info("Все переданные не null значения пользователя с id: {}, успешно обновлены", user.getId());

@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.util.UtilController;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -47,7 +46,12 @@ public class FilmController {
         if (updateFilm == null) {
             throw new NoSuchElementException("Фильм с id = " + film.getId() + " не найден");
         }
-        UtilController.merge(film, updateFilm);
+
+        if (!(film.getName() == null)) updateFilm.setName(film.getName());
+        if (!(film.getDescription() == null)) updateFilm.setDescription(film.getDescription());
+        if (!(film.getDuration() == null))  updateFilm.setDuration(film.getDuration());
+        if (!(film.getReleaseDate() == null))  updateFilm.setReleaseDate(film.getReleaseDate());
+
         validateUpdateFilm(updateFilm);
         films.put(updateFilm.getId(), updateFilm);
         log.info("Все переданные не null значения фильма с id: {}, успешно обновлены", film.getId());

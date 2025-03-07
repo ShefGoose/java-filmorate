@@ -12,6 +12,7 @@ public class Film {
     @NotBlank(message = "Имя фильма не должно быть пустым")
     private String name;
     @Size(max = 200, message = "Длина описания превышает 200 символов")
+    @NotNull(message = "Описание фильма не может быть null")
     private String description;
     @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Дата релиза фильма не может быть null")

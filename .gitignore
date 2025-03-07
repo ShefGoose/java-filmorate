@@ -28,7 +28,7 @@ target/
 *.iws
 *.iml
 *.ipr
-/src/main/resources/checkstyle.xml
+src/main/resources/checkstyle.xml
 
 ### NetBeans ###
 /nbproject/private/

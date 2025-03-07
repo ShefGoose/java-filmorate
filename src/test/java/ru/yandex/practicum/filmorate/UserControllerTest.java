@@ -41,20 +41,45 @@ public class UserControllerTest {
     }
 
     @Test
-    void shouldValidateUserFail() {
+    void shouldValidateUserEmailFail() {
         user.setEmail("newuser@");
+        user.setLogin("NewUser");
+        user.setBirthday(LocalDate.of(1999, 1, 27));
+
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder("Неверный формат Email");
+    }
+
+    @Test
+    void shouldValidateUserLoginFail() {
+        user.setEmail("newuser@gmail.com");
         user.setLogin(null);
+        user.setBirthday(LocalDate.of(1999, 1, 27));
+
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder("Логин не может быть пустым");
+    }
+
+    @Test
+    void shouldValidateUserBirthdayFail() {
+        user.setEmail("newuser@gmail.com");
+        user.setLogin("NewUser");
         user.setBirthday(LocalDate.of(2999, 1, 27));
 
         Set<ConstraintViolation<User>> violations = validator.validate(user);
 
         assertFalse(violations.isEmpty());
-        assertThat(violations).hasSize(3);
+        assertThat(violations).hasSize(1);
         assertThat(violations).extracting(ConstraintViolation::getMessage)
-                .containsExactlyInAnyOrder(
-                        "Неверный формат Email",
-                        "Логин не может быть пустым",
-                        "Дата рождения не может быть в будущем");
+                .containsExactlyInAnyOrder("Дата рождения не может быть в будущем");
     }
 
     @Test
