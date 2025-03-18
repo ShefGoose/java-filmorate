@@ -1,26 +1,24 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.SetUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
 @Service
+@Getter
+@RequiredArgsConstructor
 @Slf4j
 public class UserService {
-
     private final UserStorage userStorage;
-
-    @Autowired
-    public UserService(UserStorage userStorage) {
-        this.userStorage = userStorage;
-    }
 
     public User addFriend(Integer id, Integer friendId) {
         log.info("Получены следущие параметры запроса для добавления в друзья: Id пользователя: {}," +
@@ -40,8 +38,6 @@ public class UserService {
 
         wantFriend.getFriends().add(newFriend.getId());
         newFriend.getFriends().add(wantFriend.getId());
-        userStorage.update(wantFriend);
-        userStorage.update(newFriend);
         return wantFriend;
     }
 
@@ -61,8 +57,6 @@ public class UserService {
 
         wantFriend.getFriends().remove(newFriend.getId());
         newFriend.getFriends().remove(wantFriend.getId());
-        userStorage.update(wantFriend);
-        userStorage.update(newFriend);
         return wantFriend;
     }
 
@@ -92,7 +86,7 @@ public class UserService {
 
         Set<Integer> commonIdFriends = SetUtils.intersection(wantFriend.getFriends(), otherUser.getFriends());
         if (commonIdFriends.isEmpty()) {
-            throw new NoSuchElementException("Общих друзей нет");
+            return new ArrayList<>();
         }
 
         return userStorage.readAll().stream()

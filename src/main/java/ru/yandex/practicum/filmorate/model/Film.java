@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -21,7 +22,7 @@ public class Film {
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     @NotNull(message = "Продолжительность фильма не может быть null")
     private Integer duration;
-
+    @JsonIgnore
     private Set<Integer> userLikes;
     private Integer likes;
 }
