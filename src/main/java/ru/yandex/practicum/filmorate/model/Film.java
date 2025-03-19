@@ -25,4 +25,14 @@ public class Film {
     @JsonIgnore
     private Set<Integer> userLikes;
     private Integer likes;
+
+    public void addLike(Integer userId) {
+        userLikes.add(userId);
+        likes++;
+    }
+
+    public void deleteLike(Integer userId) {
+        userLikes.remove(userId);
+        likes--;
+    }
 }

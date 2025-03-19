@@ -36,7 +36,7 @@ public class FilmService {
             throw new IllegalArgumentException("Этот пользователь уже ставил лайк");
         }
 
-        increaseCountLikesFilm(userId, filmWithId);
+        filmWithId.addLike(userId);
         return filmWithId;
     }
 
@@ -52,7 +52,7 @@ public class FilmService {
             throw new NoSuchElementException("Этот пользователь не ставил лайк");
         }
 
-        decreaseCountLikesFilm(userId, filmWithId);
+        filmWithId.deleteLike(userId);
         return filmWithId;
     }
 
@@ -61,15 +61,5 @@ public class FilmService {
                 .sorted(Comparator.comparing(Film::getLikes).reversed())
                 .limit(count)
                 .toList();
-    }
-
-    private void increaseCountLikesFilm(Integer userId, Film film) {
-        film.getUserLikes().add(userId);
-        film.setLikes(film.getLikes() + 1);
-    }
-
-    private void decreaseCountLikesFilm(Integer userId, Film film) {
-        film.getUserLikes().remove(userId);
-        film.setLikes(film.getLikes() - 1);
     }
 }
