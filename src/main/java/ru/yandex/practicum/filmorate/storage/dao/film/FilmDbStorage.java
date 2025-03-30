@@ -1,28 +1,42 @@
-package ru.yandex.practicum.filmorate.storage;
+package ru.yandex.practicum.filmorate.storage.film;
 
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
+import ru.yandex.practicum.filmorate.storage.mapper.FilmRowMapper;
+import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 
-import java.time.LocalDate;
 import java.util.*;
 
-@Component
+import static ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage.MAX_SIZE_DESCRIPTION;
+import static ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage.MOVIE_BIRTHDAY;
+
+@Component("FilmDbStorage")
 @Slf4j
-public class InMemoryFilmStorage implements FilmStorage {
-    private final Map<Integer, Film> films = new HashMap<>();
-    private static final LocalDate MOVIE_BIRTHDAY = LocalDate.of(1895, 12, 28);
-    private static final int MAX_SIZE_DESCRIPTION = 200;
+@AllArgsConstructor
+public class FilmDbStorage implements FilmStorage {
+
+    private final JdbcTemplate jdbc;
+    private final FilmRowMapper mapper;
+    private final MpaStorage mpaStorage;
+    private final GenreStorage genreStorage;
 
     @Override
     public List<Film> readAll() {
-        return new ArrayList<>(films.values());
+        String query = "SELECT * FROM films";
+        return jdbc.query(query,mapper);
     }
 
     @Override
     public Film read(int id) {
-        return films.get(id);
+        String query = "SELECT * FROM films WHERE id = ?";
+        return jdbc.queryForObject(query, mapper, id);
     }
 
     @Override
@@ -31,10 +45,16 @@ public class InMemoryFilmStorage implements FilmStorage {
                 film.getName(), film.getDescription(),
                 film.getDuration(), film.getReleaseDate());
         validateFilm(film);
-        film.setId(getNextId());
-        film.setLikes(0);
-        film.setUserLikes(new TreeSet<>());
-        films.put(film.getId(), film);
+        SimpleJdbcInsert insertFilm = new SimpleJdbcInsert(jdbc)
+                .withTableName("films")
+                .usingGeneratedKeyColumns("id");
+        film.setId(insertFilm.executeAndReturnKey(film.toParameters()).intValue());
+        film.setMpa(mpaStorage.read(film.getMpa().getId()));
+        for (Genre genre : film.getGenres()) {
+            genre.setName(genreStorage.read(genre.getId()).getName());
+        }
+        genreStorage.delete(film);
+        genreStorage.add(film);
         log.info("Фильм с названием: {}, успешно добавлен", film.getName());
         return film;
     }
@@ -66,11 +86,6 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public void delete(int id) {
         films.remove(id);
-    }
-
-    private Integer getNextId() {
-        Integer currentMaxId = films.keySet().stream().mapToInt(id -> id).max().orElse(0);
-        return ++currentMaxId;
     }
 
     private void validateFilm(Film film) {
