@@ -1,38 +1,40 @@
 package ru.yandex.practicum.filmorate.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.validation.AfterMovieBirthday;
+import ru.yandex.practicum.filmorate.validation.Marker;
 
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.*;
 
 @Data
 public class Film {
+    @Null(groups = Marker.OnCreate.class, message = "При создании id фильма должен быть null")
+    @NotNull(groups = Marker.OnUpdate.class, message = "Для обновления не указан id")
     private Integer id;
-    @NotBlank(message = "Имя фильма не должно быть пустым")
+    @NotBlank(groups = Marker.OnCreate.class, message = "Имя фильма не должно быть пустым")
+
     private String name;
-    @Size(max = 200, message = "Длина описания превышает 200 символов")
-    @NotNull(message = "Описание фильма не может быть null")
+    @Size(groups = {Marker.OnCreate.class, Marker.OnUpdate.class}, max = 200,
+            message = "Длина описания превышает 200 символов")
+    @NotNull(groups = Marker.OnCreate.class, message = "Описание фильма не может быть null")
+
     private String description;
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @NotNull(message = "Дата релиза фильма не может быть null")
+    @NotNull(groups = Marker.OnCreate.class, message = "Дата релиза фильма не может быть null")
+    @AfterMovieBirthday(groups = {Marker.OnCreate.class, Marker.OnUpdate.class})
+
     private LocalDate releaseDate;
-    @Positive(message = "Продолжительность фильма должна быть положительным числом")
-    @NotNull(message = "Продолжительность фильма не может быть null")
+    @Positive(groups = {Marker.OnCreate.class, Marker.OnUpdate.class},
+            message = "Продолжительность фильма должна быть положительным числом")
+    @NotNull(groups = Marker.OnCreate.class,  message = "Продолжительность фильма не может быть null")
+
     private Integer duration;
-    @JsonIgnore
-    private Set<Integer> userLikes;
-    private Integer likes;
+    private Set<Genre> genres = new HashSet<>();
+    @NotNull(groups = Marker.OnCreate.class, message = "У фильма должен быть указан рейтинг MPA")
 
-    public void addLike(Integer userId) {
-        userLikes.add(userId);
-        likes++;
-    }
+    private Mpa mpa;
 
-    public void deleteLike(Integer userId) {
-        userLikes.remove(userId);
-        likes--;
-    }
 }

@@ -1,31 +1,34 @@
-package ru.yandex.practicum.filmorate.storage.film;
+package ru.yandex.practicum.filmorate.storage.dao.film;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.stereotype.Component;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
+import ru.yandex.practicum.filmorate.storage.mapper.FilmGenreMapper;
 import ru.yandex.practicum.filmorate.storage.mapper.FilmRowMapper;
-import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.*;
 
-import static ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage.MAX_SIZE_DESCRIPTION;
-import static ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage.MOVIE_BIRTHDAY;
+import static ru.yandex.practicum.filmorate.exception.ConstantException.FILM_NOT_FOUND;
 
-@Component("FilmDbStorage")
+
+@Repository
 @Slf4j
 @AllArgsConstructor
 public class FilmDbStorage implements FilmStorage {
 
     private final JdbcTemplate jdbc;
     private final FilmRowMapper mapper;
-    private final MpaStorage mpaStorage;
-    private final GenreStorage genreStorage;
+    private final FilmGenreMapper filmGenreMapper;
 
     @Override
     public List<Film> readAll() {
@@ -41,75 +44,121 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film create(Film film) {
-        log.info("Получены следущие параметры фильма: название: {}, описание: {}, продолжительность: {}, дата релиза {}",
-                film.getName(), film.getDescription(),
-                film.getDuration(), film.getReleaseDate());
-        validateFilm(film);
-        SimpleJdbcInsert insertFilm = new SimpleJdbcInsert(jdbc)
-                .withTableName("films")
-                .usingGeneratedKeyColumns("id");
-        film.setId(insertFilm.executeAndReturnKey(film.toParameters()).intValue());
-        film.setMpa(mpaStorage.read(film.getMpa().getId()));
-        for (Genre genre : film.getGenres()) {
-            genre.setName(genreStorage.read(genre.getId()).getName());
-        }
-        genreStorage.delete(film);
-        genreStorage.add(film);
-        log.info("Фильм с названием: {}, успешно добавлен", film.getName());
-        return film;
+        log.info("Добавляем фильм({})", film);
+
+        String query = "INSERT INTO films (name, description, release_date, duration, rating_id) "
+               + "VALUES(?, ?, ?, ?, ?)";
+
+        KeyHolder filmKeyHolder = new GeneratedKeyHolder();
+
+        jdbc.update(connection -> {
+            PreparedStatement pst = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            pst.setString(1, film.getName());
+            pst.setString(2, film.getDescription());
+            pst.setDate(3, Date.valueOf(film.getReleaseDate()));
+            pst.setInt(4, film.getDuration());
+            pst.setInt(5, film.getMpa().getId());
+            return pst;
+        }, filmKeyHolder);
+
+        int generateId = Objects.requireNonNull(filmKeyHolder.getKey()).intValue();
+        film.setId(generateId);
+
+        String queryResult = "SELECT * FROM films WHERE id = ?";
+
+        Film resultFilm = jdbc.queryForObject(queryResult, mapper, film.getId());
+        log.info("Успешно добавлен фильм: {}", resultFilm);
+        return resultFilm;
     }
 
     @Override
     public Film update(Film film) {
-        log.info("Получены следущие параметры фильма: {}", film.toString());
+        log.info("Обновляем фильм({})", film);
 
-        if (film.getId() == null) {
-            throw new ValidationException("Id должен быть указан");
+        if (film.getName() != null) {
+            if (film.getName().isEmpty()) {
+                throw new ValidationException("Название фильма не должно быть пустым");
+            }
+            jdbc.update("UPDATE films SET name = ? WHERE id = ?",
+                    film.getName(),
+                    film.getId());
         }
 
-        Film updateFilm = films.get(film.getId());
-        if (updateFilm == null) {
-            throw new NoSuchElementException("Фильм с id = " + film.getId() + " не найден");
+        if (film.getDescription() != null) {
+            jdbc.update("UPDATE films SET description = ? WHERE id = ?",
+                    film.getDescription(),
+                    film.getId());
         }
 
-        if (!(film.getName() == null)) updateFilm.setName(film.getName());
-        if (!(film.getDescription() == null)) updateFilm.setDescription(film.getDescription());
-        if (!(film.getDuration() == null))  updateFilm.setDuration(film.getDuration());
-        if (!(film.getReleaseDate() == null))  updateFilm.setReleaseDate(film.getReleaseDate());
+        if (film.getDuration() != null) {
+            jdbc.update("UPDATE films SET duration = ? WHERE id = ?",
+                    film.getDuration(),
+                    film.getId());
+        }
 
-        validateUpdateFilm(updateFilm);
-        films.put(updateFilm.getId(), updateFilm);
-        log.info("Все переданные не null значения фильма с id: {}, успешно обновлены", film.getId());
+        if (film.getReleaseDate() != null) {
+            jdbc.update("UPDATE films SET release_date = ? WHERE id = ?",
+                    Date.valueOf(film.getReleaseDate()),
+                    film.getId());
+        }
+
+        if (film.getMpa() != null) {
+            jdbc.update("UPDATE films SET rating_id = ? WHERE id = ?",
+                    film.getMpa().getId(),
+                    film.getId());
+        }
+
+        Film updateFilm = read(film.getId());
+        log.info("Обновлен фильм: {}", updateFilm);
         return updateFilm;
     }
 
     @Override
     public void delete(int id) {
-        films.remove(id);
-    }
-
-    private void validateFilm(Film film) {
-        if (film.getReleaseDate().isBefore(MOVIE_BIRTHDAY)) {
-            log.warn("Дата релиза фильма: {}: {}", film.getName(),
-                    film.getReleaseDate());
-            throw new ValidationException("Дата релиза раньше 12 декабря 1895 года");
+        Film film = read(id);
+        String query = "DELETE FROM films WHERE id = ?";
+        if (jdbc.update(query, id) == 0) {
+            log.warn(String.format(FILM_NOT_FOUND, id));
+            throw new NoSuchElementException(String.format(FILM_NOT_FOUND, id));
         }
     }
 
-    private void validateUpdateFilm(Film film) {
-        if (film.getName().isEmpty()) {
-            log.warn("Название фильма: {}", film.getName());
-            throw new ValidationException("Название фильма не должно быть пустым");
-        }
-        if (film.getDescription().length() > MAX_SIZE_DESCRIPTION) {
-            log.warn("Длина описания фильма: {}", film.getDescription().length());
-            throw new ValidationException("Длина описания превышает 200 символов");
-        }
-        validateFilm(film);
-        if (film.getDuration() <= 0) {
-            log.warn("Продолжительность фильма: {}", film.getDuration());
-            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
+    @Override
+    public void addGenres(int filmId, Set<Genre> genres) {
+        log.info("Добавляем фильму ID_{}, жанры ({})", filmId, genres);
+        String query = "INSERT INTO film_genres (film_id, genre_id)  VALUES (?, ?)";
+        for (Genre genre : genres) {
+            jdbc.update(query, filmId, genre.getId());
+            log.info("Фильму ID_{} добавлен жанр ID_{}", filmId, genre.getId());
         }
     }
 
+    @Override
+    public void updateGenres(int filmId, Set<Genre> genres) {
+        jdbc.update("DELETE FROM film_genres WHERE film_id=?", filmId);
+        addGenres(filmId, genres);
+        log.info("Обновлены жанры у фильма ID_{}: {}", filmId, genres);
+    }
+
+    @Override
+    public Set<Genre> getGenres(int filmId) {
+        String query = "SELECT f.genre_id, g.name FROM film_genres AS f "
+                + "LEFT JOIN genres AS g ON f.genre_id = g.id "
+                + "WHERE f.film_id = ? ";
+        Set<Genre> genres = new LinkedHashSet<>(jdbc.query(query, filmGenreMapper, filmId));
+        log.info("Возвращены все жанры для фильма ID_{}: {}", filmId, genres);
+        return genres;
+    }
+
+    @Override
+    public boolean contains(int id) {
+        try {
+            read(id);
+            log.info("Найден фильм ID_{}", id);
+            return true;
+        } catch (EmptyResultDataAccessException ex) {
+            log.warn("Не найден фильм ID_{}", id);
+            return false;
+        }
+    }
 }

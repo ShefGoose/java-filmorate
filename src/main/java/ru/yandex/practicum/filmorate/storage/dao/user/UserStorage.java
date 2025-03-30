@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.storage.user;
+package ru.yandex.practicum.filmorate.storage.dao.user;
 
 import ru.yandex.practicum.filmorate.model.User;
 
@@ -15,4 +15,6 @@ public interface UserStorage {
     void delete(int id);
 
     User read(int id);
+
+    boolean contains(int userId);
 }

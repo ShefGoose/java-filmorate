@@ -1,2 +1,8 @@
-package ru.yandex.practicum.filmorate.validation;public class Marker {
+package ru.yandex.practicum.filmorate.validation;
+
+public interface Marker {
+
+    interface OnCreate {}
+
+    interface OnUpdate {}
 }

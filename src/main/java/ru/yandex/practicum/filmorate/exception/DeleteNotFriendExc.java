@@ -1,7 +1,7 @@
 package ru.yandex.practicum.filmorate.exception;
 
-public class DeleteNoFriendExc extends RuntimeException {
-    public DeleteNoFriendExc(String message) {
+public class DeleteNotFriendExc extends RuntimeException {
+    public DeleteNotFriendExc(String message) {
         super(message);
     }
 }

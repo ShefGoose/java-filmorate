@@ -1,22 +1,20 @@
-package ru.yandex.practicum.filmorate.storage.genre;
+package ru.yandex.practicum.filmorate.storage.dao.genre;
+
 
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.Film;
+
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.mapper.GenreRowMapper;
 
-
-import java.util.HashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
 
 @Repository
+@Slf4j
 @AllArgsConstructor
 public class GenreStorage {
     private final JdbcTemplate jdbc;
@@ -24,19 +22,29 @@ public class GenreStorage {
 
     public List<Genre> readAll() {
         String query = "SELECT * FROM genres";
-        return jdbc.query(query,mapper);
+        List<Genre> allGenres = jdbc.query(query,mapper);
+
+        log.info("Возвращены все жанры: {}", allGenres);
+
+        return allGenres;
     }
 
     public Genre read(int id) {
         String query = "SELECT * FROM genres WHERE id = ?";
-        return jdbc.queryForObject(query, mapper, id);
+       Genre genre = jdbc.queryForObject(query, mapper, id);
+
+        log.info("Возвращён жанр: {}", genre);
+
+       return genre;
     }
 
     public boolean contains(int id) {
         try {
             read(id);
+            log.info("Найден жанр ID_{}",id);
             return true;
         } catch (EmptyResultDataAccessException e) {
+            log.warn("Не найден жанр ID_{}",id);
             return false;
         }
     }

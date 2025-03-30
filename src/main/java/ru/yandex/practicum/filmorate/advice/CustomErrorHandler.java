@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.controller;
+package ru.yandex.practicum.filmorate.advice;
 
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import ru.yandex.practicum.filmorate.exception.DeleteNoFriendExc;
+import ru.yandex.practicum.filmorate.advice.response.ApiError;
+import ru.yandex.practicum.filmorate.advice.response.ValidationErrorResponse;
+import ru.yandex.practicum.filmorate.advice.response.Violation;
+import ru.yandex.practicum.filmorate.exception.DeleteNotFriendExc;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
 import java.util.List;
@@ -76,7 +79,7 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
     }
 
     //200
-    @ExceptionHandler(DeleteNoFriendExc.class)
+    @ExceptionHandler(DeleteNotFriendExc.class)
     public ApiError handleDeleteFriend(final Exception ex, final WebRequest request) {
         return new ApiError(HttpStatus.OK, ex.getLocalizedMessage(), "В списке нет друзей на удаление");
     }
