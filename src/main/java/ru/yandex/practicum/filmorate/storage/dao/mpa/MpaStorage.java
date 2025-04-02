@@ -2,13 +2,15 @@ package ru.yandex.practicum.filmorate.storage.dao.mpa;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.mapper.MpaRowMapper;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+
+import static ru.yandex.practicum.filmorate.exception.ConstantException.MPA_NOT_FOUND;
 
 @Component
 @Slf4j
@@ -28,21 +30,13 @@ public class MpaStorage {
 
     public Mpa read(int id) {
         String query = "SELECT * FROM MPA WHERE id = ?";
-        Mpa mpa = jdbc.queryForObject(query, mapper, id);
-
-        log.info("Возвращён рейтинг MPA: {}", mpa);
-
-        return mpa;
-    }
-
-    public boolean contains(int id) {
-        try {
-            read(id);
-            log.info("Рейтинг MPA ID_{} найден.", id);
-            return true;
-        } catch (EmptyResultDataAccessException e) {
+        List<Mpa> allMpa = jdbc.query(query, mapper, id);
+        if (allMpa.isEmpty()) {
             log.warn("Рейтинг MPA ID_{} не найден.", id);
-            return false;
+            throw new NoSuchElementException(String.format(MPA_NOT_FOUND, id));
+        } else {
+            log.info("Возвращён рейтинг MPA: {}", allMpa.getFirst());
+            return allMpa.getFirst();
         }
     }
 }

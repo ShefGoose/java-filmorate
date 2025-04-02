@@ -2,14 +2,11 @@ package ru.yandex.practicum.filmorate.storage.dao.user;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.mapper.LikeRowMapper;
 import ru.yandex.practicum.filmorate.storage.mapper.UserMapper;
 
 import java.sql.Date;
@@ -25,16 +22,21 @@ import static ru.yandex.practicum.filmorate.exception.ConstantException.USER_NOT
 public class UserDbStorage implements UserStorage {
     private final JdbcTemplate jdbc;
     private final UserMapper mapper;
-    private final LikeRowMapper likeMapper;
+
 
     @Override
     public User read(int id) {
         String query = "SELECT * "
                 + "FROM users "
                 + "WHERE id = ?";
-        User user = jdbc.queryForObject(query, mapper, id);
-        log.info("Возвращён пользователь: {}", user);
-        return user;
+        List<User> users = jdbc.query(query, mapper, id);
+        if (users.isEmpty()) {
+            log.warn("Не найден пользователь ID_{}", id);
+            throw new NoSuchElementException(String.format(USER_NOT_FOUND, id));
+        } else {
+            log.info("Возвращён пользователь: {}", users.getFirst());
+            return users.getFirst();
+        }
     }
 
     @Override
@@ -45,6 +47,7 @@ public class UserDbStorage implements UserStorage {
         log.info("Возвращены все пользователи: {}", users);
         return users;
     }
+
 
     @Override
     public User create(User user) {
@@ -67,48 +70,23 @@ public class UserDbStorage implements UserStorage {
         int generateId = Objects.requireNonNull(userKeyHolder.getKey()).intValue();
         user.setId(generateId);
 
-        String queryResult = "SELECT * FROM users WHERE id = ?";
-
-        User result = jdbc.queryForObject(queryResult, mapper, user.getId());
-        log.info("Успешно добавлен пользователь: {}", result);
-        return result;
+        log.info("Успешно добавлен пользователь: {}", user);
+        return user;
     }
 
     @Override
     public User update(User user) {
         log.info("Обновляем данные пользователя: {}", user);
-        if (user.getEmail() != null) {
-            if (user.getEmail().isEmpty()) {
-                throw new ValidationException("Email пользователя не должен быть пустым");
-            }
-            jdbc.update("UPDATE users SET email = ? WHERE id = ?", user.getEmail(), user.getId());
-        }
+        String query = "UPDATE users SET email = ?, "
+                + "login = ?, "
+                + "name = ?, "
+                + "birthday = ? "
+                + "WHERE id = ?";
+        jdbc.update(query, user.getEmail(), user.getLogin(), user.getName(),
+                Date.valueOf(user.getBirthday()), user.getId());
 
-        if (user.getLogin() != null) {
-            if (user.getLogin().isEmpty()) {
-                throw new ValidationException("Логин не может быть пустым");
-            }
-            jdbc.update("UPDATE users SET login = ? WHERE id = ?", user.getLogin(), user.getId());
-        }
-
-        if (user.getName() != null) {
-            if (!user.getName().isEmpty()) {
-                jdbc.update("UPDATE users SET name = ? WHERE id = ?", user.getName(), user.getId());
-            } else {
-                if (user.getLogin() != null && !user.getLogin().isEmpty()) {
-                    jdbc.update("UPDATE users SET name = ? WHERE id = ?", user.getLogin(), user.getId());
-                }
-            }
-        }
-
-        if (user.getBirthday() != null) {
-            jdbc.update("UPDATE users SET birthday = ? WHERE id = ?",
-                    Date.valueOf(user.getBirthday()), user.getId());
-        }
-
-        User result = read(user.getId());
-        log.info("Успешно обновлены данные пользователя: {}", result);
-        return result;
+        log.info("Успешно обновлены данные пользователя: {}", user);
+        return user;
     }
 
     @Override
@@ -121,15 +99,5 @@ public class UserDbStorage implements UserStorage {
         }
     }
 
-    @Override
-    public boolean contains(int id) {
-        try {
-            read(id);
-            log.info("Найден пользователь ID_{}", id);
-            return true;
-        } catch (EmptyResultDataAccessException ex) {
-            log.warn("Не найден пользователь ID_{}", id);
-            return false;
-        }
-    }
+
 }

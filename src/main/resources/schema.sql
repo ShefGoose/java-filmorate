@@ -55,6 +55,5 @@ CREATE TABLE IF NOT EXISTS friends
 (
     user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     friend_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    status boolean NOT NULL,
     PRIMARY KEY (user_id, friend_id)
 );

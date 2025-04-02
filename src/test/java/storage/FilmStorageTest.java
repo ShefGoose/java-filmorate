@@ -77,11 +77,24 @@ public class FilmStorageTest {
     @Test
     public void updateFilm() {
         Film updateFilm = new Film();
+        Mpa updateMpa = new Mpa();
+        updateMpa.setId(2);
+
         updateFilm.setId(resultFilm.getId());
         updateFilm.setName("Update name");
+        updateFilm.setDescription("Update desc");
+        updateFilm.setDuration(150);
+        updateFilm.setReleaseDate(LocalDate.of(1999,1,2));
+        updateFilm.setMpa(updateMpa);
+
 
         Film updateResult = filmStorage.update(updateFilm);
 
         assertThat(updateResult).hasFieldOrPropertyWithValue("name", "Update name");
+        assertThat(updateResult).hasFieldOrPropertyWithValue("description", "Update desc");
+        assertThat(updateResult).hasFieldOrPropertyWithValue("duration", 150);
+        assertThat(updateResult).hasFieldOrPropertyWithValue("releaseDate",
+                LocalDate.of(1999,1,2));
+        assertThat(updateResult).hasFieldOrPropertyWithValue("mpa", updateMpa);
     }
 }

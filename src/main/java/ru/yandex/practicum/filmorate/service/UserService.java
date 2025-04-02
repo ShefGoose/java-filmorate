@@ -2,15 +2,13 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.DeleteNotFriendExc;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.dao.friends.FriendsStorage;
 import ru.yandex.practicum.filmorate.storage.dao.user.UserStorage;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import static ru.yandex.practicum.filmorate.exception.ConstantException.*;
 
@@ -26,15 +24,39 @@ public class UserService {
     }
 
     public User update(User user) {
-        checkUserToUpdate(user);
-        return userStorage.update(user);
+        User needUpdateUser = userStorage.read(user.getId());
+        if (user.getEmail() != null) {
+            if (user.getEmail().isEmpty()) {
+                throw new ValidationException("Email пользователя не должен быть пустым");
+            }
+            needUpdateUser.setEmail(user.getEmail());
+        }
+
+        if (user.getLogin() != null) {
+            if (user.getLogin().isEmpty()) {
+                throw new ValidationException("Логин не может быть пустым");
+            }
+            needUpdateUser.setLogin(user.getLogin());
+        }
+
+        if (user.getName() != null) {
+            if (!user.getName().isEmpty()) {
+                needUpdateUser.setName(user.getName());
+            } else {
+                if (user.getLogin() != null && !user.getLogin().isEmpty()) {
+                    needUpdateUser.setName(user.getLogin());
+                }
+            }
+        }
+
+        if (user.getBirthday() != null) {
+            needUpdateUser.setBirthday(user.getBirthday());
+        }
+
+        return userStorage.update(needUpdateUser);
     }
 
     public User read(int id) {
-        if (!userStorage.contains(id)) {
-            log.warn(String.format(USER_NOT_FOUND, id));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, id));
-        }
         return userStorage.read(id);
     }
 
@@ -44,99 +66,55 @@ public class UserService {
 
     public void addFriend(int userId, int friendId) {
         checkFriendToAdd(userId, friendId);
-        boolean status = friendsStorage.contains(friendId, userId);
-        friendsStorage.add(userId, friendId, status);
+        friendsStorage.addFriend(userId, friendId);
     }
 
     public void deleteFriend(int userId, int friendId) {
         checkFriendToDelete(userId, friendId);
-        friendsStorage.delete(userId, friendId);
+        friendsStorage.deleteFriend(userId, friendId);
     }
 
     public List<User> getFriends(int userId) {
-        if (!userStorage.contains(userId)) {
-            log.warn(String.format(USER_NOT_FOUND, userId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, userId));
-        }
-        List<User> friends = friendsStorage.getFromUserIds(userId).stream()
-                .mapToInt(Integer::valueOf)
-                .mapToObj(userStorage::read)
-                .toList();
+        userStorage.read(userId);
+        List<User> friends = friendsStorage.getFriends(userId);
         log.info("Возвращен список друзей: {}", friends);
         return friends;
     }
 
     public List<User> getCommonFriends(int userId, int otherUserId) {
         checkCommonFriendToGet(userId, otherUserId);
-        List<User> commonFriends = CollectionUtils.intersection(
-                        friendsStorage.getFromUserIds(userId),
-                        friendsStorage.getFromUserIds(otherUserId)).stream()
-                .mapToInt(Integer::valueOf)
-                .mapToObj(userStorage::read)
-                .toList();
+        List<User> commonFriends = friendsStorage.getCommonFriends(userId, otherUserId);
         log.info("Возвращён список общих друзей: {}", commonFriends);
         return commonFriends;
     }
 
-
-    private void checkUserToUpdate(User user) {
-        if (!userStorage.contains(user.getId())) {
-            log.warn(String.format(USER_NOT_FOUND, user.getId()));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, user.getId()));
-        }
-    }
-
     private void checkFriendToAdd(int userId, int friendId) {
-        if (!userStorage.contains(userId)) {
-            log.warn(String.format(USER_NOT_FOUND, userId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, userId));
-        }
-        if (!userStorage.contains(friendId)) {
-            log.warn(String.format(USER_NOT_FOUND, friendId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, friendId));
-        }
+        userStorage.read(userId);
+        userStorage.read(friendId);
+
         if (userId == friendId) {
             log.warn(String.format(UNABLE_TO_ADD_YOURSELF, userId));
             throw new IllegalArgumentException(String.format(UNABLE_TO_ADD_YOURSELF, userId));
         }
-        if (friendsStorage.contains(userId, friendId)) {
-            log.warn(String.format(FRIENDSHIP_ALREADY_EXIST, userId, friendId));
-            throw new IllegalArgumentException(String.format(FRIENDSHIP_ALREADY_EXIST, userId, friendId));
-        }
     }
 
     private void checkFriendToDelete(int userId, int friendId) {
-        if (!userStorage.contains(userId)) {
-            log.warn(String.format(USER_NOT_FOUND, userId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, userId));
-        }
-        if (!userStorage.contains(friendId)) {
-            log.warn(String.format(USER_NOT_FOUND, friendId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, friendId));
-        }
+        userStorage.read(userId);
+        userStorage.read(friendId);
+
         if (userId == friendId) {
             log.warn(String.format(UNABLE_TO_DELETE_YOURSELF, userId));
             throw new IllegalArgumentException(String.format(UNABLE_TO_DELETE_YOURSELF, userId));
         }
-        if (!friendsStorage.contains(userId, friendId)) {
-            log.warn(String.format(FRIENDSHIP_NOT_FOUND, userId, friendId));
-            throw new DeleteNotFriendExc(String.format(FRIENDSHIP_NOT_FOUND, userId, friendId));
-        }
     }
 
     private void checkCommonFriendToGet(int userId, int otherUserId) {
-        if (!userStorage.contains(userId)) {
-            log.warn(String.format(USER_NOT_FOUND, userId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, userId));
-        }
-        if (!userStorage.contains(otherUserId)) {
-            log.warn(String.format(USER_NOT_FOUND, otherUserId));
-            throw new NoSuchElementException(String.format(USER_NOT_FOUND, otherUserId));
-        }
+        userStorage.read(userId);
+        userStorage.read(otherUserId);
+
         if (userId == otherUserId) {
             log.warn(String.format(UNABLE_FRIENDS_AMONG_THEMSELVES, userId));
             throw new IllegalArgumentException(String.format(UNABLE_FRIENDS_AMONG_THEMSELVES, userId));
         }
     }
-
 }

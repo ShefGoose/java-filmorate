@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.advice;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -14,7 +15,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import ru.yandex.practicum.filmorate.advice.response.ApiError;
 import ru.yandex.practicum.filmorate.advice.response.ValidationErrorResponse;
 import ru.yandex.practicum.filmorate.advice.response.Violation;
-import ru.yandex.practicum.filmorate.exception.DeleteNotFriendExc;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
 import java.util.List;
@@ -64,6 +64,14 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
         return new ValidationErrorResponse(violations);
     }
 
+    @ExceptionHandler(DuplicateKeyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleDuplicateKeyException(DuplicateKeyException e) {
+        return new ApiError(HttpStatus.BAD_REQUEST,
+                "Пользователь уже выполнял это действие",
+                e.getLocalizedMessage());
+    }
+
     //404
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NoSuchElementException.class)
@@ -77,13 +85,5 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
     public ApiError handleAll(final Exception ex, final WebRequest request) {
         return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, ex.getLocalizedMessage(), "Произошла ошибка");
     }
-
-    //200
-    @ExceptionHandler(DeleteNotFriendExc.class)
-    public ApiError handleDeleteFriend(final Exception ex, final WebRequest request) {
-        return new ApiError(HttpStatus.OK, ex.getLocalizedMessage(), "В списке нет друзей на удаление");
-    }
-
-
 
 }

@@ -66,10 +66,17 @@ public class UserStorageTest {
     public void updateUser() {
         User updateUser = new User();
         updateUser.setId(resultUser.getId());
+        updateUser.setEmail("UpdateEmail@bk.com");
         updateUser.setName("Update name");
+        updateUser.setLogin("UpdateLogin");
+        updateUser.setBirthday(LocalDate.of(2005,1,1));
 
         User updateResult = userStorage.update(updateUser);
 
         assertThat(updateResult).hasFieldOrPropertyWithValue("name", "Update name");
+        assertThat(updateResult).hasFieldOrPropertyWithValue("login", "UpdateLogin");
+        assertThat(updateResult).hasFieldOrPropertyWithValue("email", "UpdateEmail@bk.com");
+        assertThat(updateResult).hasFieldOrPropertyWithValue("birthday",
+                LocalDate.of(2005,1,1));
     }
 }

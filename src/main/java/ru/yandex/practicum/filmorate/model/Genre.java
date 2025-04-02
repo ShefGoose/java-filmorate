@@ -6,9 +6,8 @@ import lombok.Data;
 
 @Data
 public class Genre {
-
     @NotNull
-    Integer id;
+    private Integer id;
     @NotNull
-    String name;
+    private String name;
 }

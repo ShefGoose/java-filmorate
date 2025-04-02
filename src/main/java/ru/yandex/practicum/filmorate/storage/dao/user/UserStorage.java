@@ -15,6 +15,4 @@ public interface UserStorage {
     void delete(int id);
 
     User read(int id);
-
-    boolean contains(int userId);
 }
