@@ -1,96 +1,120 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.SetUtils;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.dao.friends.FriendsStorage;
+import ru.yandex.practicum.filmorate.storage.dao.user.UserStorage;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
+
+import static ru.yandex.practicum.filmorate.exception.ConstantException.*;
 
 @Service
-@Getter
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class UserService {
     private final UserStorage userStorage;
+    private final FriendsStorage friendsStorage;
 
-    public User addFriend(Integer id, Integer friendId) {
-        log.info("Получены следущие параметры запроса для добавления в друзья: Id пользователя: {}," +
-                        " Id желаемого друга: {}",
-                id, friendId);
-        if (id.equals(friendId)) {
-            throw new IllegalArgumentException("Нельзя добавить самого себя в друзья");
-        }
-        User wantFriend = userStorage.read(id);
-        User newFriend = userStorage.read(friendId);
-        if (wantFriend == null) {
-            throw new NoSuchElementException("Такого пользователя нет");
-        }
-        if (newFriend == null) {
-            throw new NoSuchElementException("Невозможно добавить в друзья несуществующего пользователя");
-        }
-
-        wantFriend.getFriends().add(newFriend.getId());
-        newFriend.getFriends().add(wantFriend.getId());
-        return wantFriend;
+    public User create(User user) {
+        return userStorage.create(user);
     }
 
-
-    public User deleteFriend(Integer id, Integer friendId) {
-        log.info("Получены следущие параметры запроса для удаления из друзей: Id пользователя: {}," +
-                        " Id удаляемого друга: {}",
-                id, friendId);
-        User wantFriend = userStorage.read(id);
-        User newFriend = userStorage.read(friendId);
-        if (wantFriend == null) {
-            throw new NoSuchElementException("Такого пользователя нет");
-        }
-        if (newFriend == null) {
-            throw new NoSuchElementException("Переданный пользователь не состоит в друзьях");
+    public User update(User user) {
+        User needUpdateUser = userStorage.read(user.getId());
+        if (user.getEmail() != null) {
+            if (user.getEmail().isEmpty()) {
+                throw new ValidationException("Email пользователя не должен быть пустым");
+            }
+            needUpdateUser.setEmail(user.getEmail());
         }
 
-        wantFriend.getFriends().remove(newFriend.getId());
-        newFriend.getFriends().remove(wantFriend.getId());
-        return wantFriend;
+        if (user.getLogin() != null) {
+            if (user.getLogin().isEmpty()) {
+                throw new ValidationException("Логин не может быть пустым");
+            }
+            needUpdateUser.setLogin(user.getLogin());
+        }
+
+        if (user.getName() != null) {
+            if (!user.getName().isEmpty()) {
+                needUpdateUser.setName(user.getName());
+            } else {
+                if (user.getLogin() != null && !user.getLogin().isEmpty()) {
+                    needUpdateUser.setName(user.getLogin());
+                }
+            }
+        }
+
+        if (user.getBirthday() != null) {
+            needUpdateUser.setBirthday(user.getBirthday());
+        }
+
+        return userStorage.update(needUpdateUser);
     }
 
-    public List<User> getAllFriends(Integer id) {
-        User whoGetFriends = userStorage.read(id);
-        log.info("Переданный id пользователя для получения списка друзей: {}", id);
-        if (whoGetFriends == null) {
-            throw new NoSuchElementException("Такого пользователя нет");
-        }
-        return userStorage.readAll().stream()
-                .filter(user -> whoGetFriends.getFriends().contains(user.getId()))
-                .toList();
+    public User read(int id) {
+        return userStorage.read(id);
     }
 
-    public List<User> getCommonFriends(Integer id, Integer otherId) {
-        log.info("Получены следущие параметры запроса для получения списка общих друзей: Id пользователя: {}," +
-                        " Id другого пользователя: {}",
-                id, otherId);
-        User wantFriend = userStorage.read(id);
-        User otherUser = userStorage.read(otherId);
-        if (wantFriend == null) {
-            throw new NoSuchElementException("Такого пользователя нет");
-        }
-        if (otherUser == null) {
-            throw new NoSuchElementException("Другого пользователя не существует");
-        }
+    public List<User> readAll() {
+        return userStorage.readAll();
+    }
 
-        Set<Integer> commonIdFriends = SetUtils.intersection(wantFriend.getFriends(), otherUser.getFriends());
-        if (commonIdFriends.isEmpty()) {
-            return new ArrayList<>();
-        }
+    public void addFriend(int userId, int friendId) {
+        checkFriendToAdd(userId, friendId);
+        friendsStorage.addFriend(userId, friendId);
+    }
 
-        return userStorage.readAll().stream()
-                .filter(user -> commonIdFriends.contains(user.getId()))
-                .toList();
+    public void deleteFriend(int userId, int friendId) {
+        checkFriendToDelete(userId, friendId);
+        friendsStorage.deleteFriend(userId, friendId);
+    }
+
+    public List<User> getFriends(int userId) {
+        userStorage.read(userId);
+        List<User> friends = friendsStorage.getFriends(userId);
+        log.info("Возвращен список друзей: {}", friends);
+        return friends;
+    }
+
+    public List<User> getCommonFriends(int userId, int otherUserId) {
+        checkCommonFriendToGet(userId, otherUserId);
+        List<User> commonFriends = friendsStorage.getCommonFriends(userId, otherUserId);
+        log.info("Возвращён список общих друзей: {}", commonFriends);
+        return commonFriends;
+    }
+
+    private void checkFriendToAdd(int userId, int friendId) {
+        userStorage.read(userId);
+        userStorage.read(friendId);
+
+        if (userId == friendId) {
+            log.warn(String.format(UNABLE_TO_ADD_YOURSELF, userId));
+            throw new IllegalArgumentException(String.format(UNABLE_TO_ADD_YOURSELF, userId));
+        }
+    }
+
+    private void checkFriendToDelete(int userId, int friendId) {
+        userStorage.read(userId);
+        userStorage.read(friendId);
+
+        if (userId == friendId) {
+            log.warn(String.format(UNABLE_TO_DELETE_YOURSELF, userId));
+            throw new IllegalArgumentException(String.format(UNABLE_TO_DELETE_YOURSELF, userId));
+        }
+    }
+
+    private void checkCommonFriendToGet(int userId, int otherUserId) {
+        userStorage.read(userId);
+        userStorage.read(otherUserId);
+
+        if (userId == otherUserId) {
+            log.warn(String.format(UNABLE_FRIENDS_AMONG_THEMSELVES, userId));
+            throw new IllegalArgumentException(String.format(UNABLE_FRIENDS_AMONG_THEMSELVES, userId));
+        }
     }
 }

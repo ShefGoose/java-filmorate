@@ -1,65 +1,83 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.dao.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.dao.likes.LikeStorage;
+import ru.yandex.practicum.filmorate.storage.dao.user.UserStorage;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.NoSuchElementException;
+
 
 @Service
-@Getter
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class FilmService {
+
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final LikeStorage likeStorage;
 
-    public Film addLike(Integer userId, Integer filmId) {
-        log.info("Получены следущие параметры запроса для добавления лайка фильму: Id пользователя: {}, Id фильма: {}",
-                userId, filmId);
-        if (userStorage.read(userId) == null) {
-            throw new NoSuchElementException("Такого пользователя не существует");
-        }
-
-        Film filmWithId = filmStorage.read(filmId);
-
-        if (filmWithId == null) {
-            throw new NoSuchElementException("Такого фильма не существует");
-        }
-        if (filmWithId.getUserLikes().contains(userId)) {
-            throw new IllegalArgumentException("Этот пользователь уже ставил лайк");
-        }
-
-        filmWithId.addLike(userId);
-        return filmWithId;
+    public Film create(Film film) {
+        return filmStorage.create(film);
     }
 
-    public Film deleteLike(Integer userId, Integer filmId) {
-        log.info("Получены следущие параметры запроса для удаления лайка фильму: Id пользователя: {}, Id фильма: {}",
-                userId, filmId);
-        Film filmWithId = filmStorage.read(filmId);
+    public Film update(Film film) {
+        Film needUpdateFilm = filmStorage.read(film.getId());
 
-        if (filmWithId == null) {
-            throw new NoSuchElementException("Такого фильма не существует");
-        }
-        if (!filmWithId.getUserLikes().contains(userId)) {
-            throw new NoSuchElementException("Этот пользователь не ставил лайк");
+        if (film.getName() != null) {
+            if (film.getName().isEmpty()) {
+                throw new ValidationException("Название фильма не должно быть пустым");
+            }
+            needUpdateFilm.setName(film.getName());
         }
 
-        filmWithId.deleteLike(userId);
-        return filmWithId;
+        if (film.getDescription() != null) {
+            needUpdateFilm.setDescription(film.getDescription());
+        }
+
+        if (film.getDuration() != null) {
+            needUpdateFilm.setDuration(film.getDuration());
+        }
+
+        if (film.getReleaseDate() != null) {
+            needUpdateFilm.setReleaseDate(film.getReleaseDate());
+        }
+
+        if (film.getMpa() != null) {
+            needUpdateFilm.setMpa(film.getMpa());
+        }
+        if (film.getGenres() != null) {
+            needUpdateFilm.setGenres(film.getGenres());
+        }
+
+        return filmStorage.update(needUpdateFilm);
     }
 
-    public List<Film> readPopularFilms(int count) {
-        return filmStorage.readAll().stream()
-                .sorted(Comparator.comparing(Film::getLikes).reversed())
-                .limit(count)
-                .toList();
+    public Film read(int id) {
+        return filmStorage.read(id);
+    }
+
+    public List<Film> readAll() {
+        return filmStorage.readAll();
+    }
+
+    public List<Film> getPopularFilms(int count) {
+        return filmStorage.getPopular(count);
+    }
+
+    public void addLike(int filmId, int userId) {
+        filmStorage.read(filmId);
+        userStorage.read(userId);
+        likeStorage.add(filmId, userId);
+    }
+
+    public void deleteLike(int filmId, int userId) {
+        filmStorage.read(filmId);
+        userStorage.read(userId);
+        likeStorage.delete(filmId, userId);
     }
 }

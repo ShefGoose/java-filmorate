@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.validation.Marker;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -36,7 +37,7 @@ public class UserControllerTest {
         user.setLogin("NewUser");
         user.setBirthday(LocalDate.of(1999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
         assertTrue(violations.isEmpty());
     }
 
@@ -46,7 +47,7 @@ public class UserControllerTest {
         user.setLogin("NewUser");
         user.setBirthday(LocalDate.of(1999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -60,7 +61,7 @@ public class UserControllerTest {
         user.setLogin(null);
         user.setBirthday(LocalDate.of(1999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -74,7 +75,7 @@ public class UserControllerTest {
         user.setLogin("NewUser");
         user.setBirthday(LocalDate.of(2999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -88,7 +89,7 @@ public class UserControllerTest {
         user.setLogin("NewUser");
         user.setBirthday(LocalDate.of(1999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -103,7 +104,7 @@ public class UserControllerTest {
         user.setLogin("New User");
         user.setBirthday(LocalDate.of(1999, 1, 27));
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -127,7 +128,7 @@ public class UserControllerTest {
         user.setLogin("NewUser");
         user.setBirthday(null);
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);

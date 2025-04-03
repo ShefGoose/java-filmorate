@@ -1,22 +1,25 @@
-package ru.yandex.practicum.filmorate.controller;
+package ru.yandex.practicum.filmorate.advice;
 
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import ru.yandex.practicum.filmorate.advice.response.ApiError;
+import ru.yandex.practicum.filmorate.advice.response.ValidationErrorResponse;
+import ru.yandex.practicum.filmorate.advice.response.Violation;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice("ru.yandex.practicum.filmorate.controller")
 public class CustomErrorHandler extends ResponseEntityExceptionHandler {
@@ -26,15 +29,11 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
                                                                   final HttpHeaders headers,
                                                                   final HttpStatusCode status,
                                                                   final WebRequest request) {
-        final List<String> errors = new ArrayList<>();
-        for (final FieldError error : ex.getBindingResult().getFieldErrors()) {
-            errors.add(error.getField() + ": " + error.getDefaultMessage());
-        }
-        for (final ObjectError error : ex.getBindingResult().getGlobalErrors()) {
-            errors.add(error.getObjectName() + ": " + error.getDefaultMessage());
-        }
-        final ApiError apiError = new ApiError(HttpStatus.BAD_REQUEST, "Ошибка валидации", errors);
-        return handleExceptionInternal(ex, apiError, headers, apiError.getStatus(), request);
+        final List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> new Violation(error.getField(), error.getDefaultMessage()))
+                .collect(Collectors.toList());
+        ValidationErrorResponse validationErrorResponse =  new ValidationErrorResponse(violations);
+        return handleExceptionInternal(ex, validationErrorResponse, headers,HttpStatus.BAD_REQUEST, request);
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -47,6 +46,30 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ApiError handleIllegalArgumentException(final IllegalArgumentException e) {
         return new ApiError(HttpStatus.BAD_REQUEST, "Неверное действие пользователя", e.getLocalizedMessage());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ValidationErrorResponse onConstraintValidationException(
+            ConstraintViolationException e
+    ) {
+        final List<Violation> violations = e.getConstraintViolations().stream()
+                .map(
+                        violation -> new Violation(
+                                violation.getPropertyPath().toString(),
+                                violation.getMessage()
+                        )
+                )
+                .collect(Collectors.toList());
+        return new ValidationErrorResponse(violations);
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleDuplicateKeyException(DuplicateKeyException e) {
+        return new ApiError(HttpStatus.BAD_REQUEST,
+                "Пользователь уже выполнял это действие",
+                e.getLocalizedMessage());
     }
 
     //404
@@ -62,4 +85,5 @@ public class CustomErrorHandler extends ResponseEntityExceptionHandler {
     public ApiError handleAll(final Exception ex, final WebRequest request) {
         return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, ex.getLocalizedMessage(), "Произошла ошибка");
     }
+
 }

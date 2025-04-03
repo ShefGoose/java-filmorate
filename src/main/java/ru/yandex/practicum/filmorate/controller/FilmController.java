@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.validation.Marker;
 
 import java.util.*;
 
@@ -21,36 +22,43 @@ public class FilmController {
 
     @GetMapping
     public List<Film> getListFilms() {
-        return filmService.getFilmStorage().readAll();
+        return filmService.readAll();
+    }
+
+    @GetMapping("/{id}")
+    public Film getFilm(@PathVariable int id) {
+        return filmService.read(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Validated(Marker.OnCreate.class)
     public Film postFilm(@Valid @RequestBody Film film) {
-        return filmService.getFilmStorage().create(film);
+         return filmService.create(film);
     }
 
     @PutMapping
-    public Film updateFilm(@RequestBody Film film) {
-        return  filmService.getFilmStorage().update(film);
+    @Validated(Marker.OnUpdate.class)
+    public Film updateFilm(@Valid @RequestBody Film film) {
+        return  filmService.update(film);
     }
 
     @PutMapping ("{id}/like/{userId}")
-    public Film likeFilm(@PathVariable("id") int id,
+    public void likeFilm(@PathVariable("id") int id,
                          @PathVariable("userId") int userId) {
-        return filmService.addLike(userId, id);
+         filmService.addLike(id, userId);
     }
 
     @DeleteMapping ("{id}/like/{userId}")
-    public Film deleteLikeFilm(@PathVariable("id") int id,
+    public void deleteLikeFilm(@PathVariable("id") int id,
                          @PathVariable("userId") int userId) {
-        return filmService.deleteLike(userId, id);
+        filmService.deleteLike(id, userId);
     }
 
     @GetMapping("/popular")
     public List<Film> getPopularFilms(@RequestParam(name = "count", defaultValue = "10")
                                       @Positive(message = "Количество фильмов должно быть положительным числом")
                                           int count) {
-        return filmService.readPopularFilms(count);
+        return filmService.getPopularFilms(count);
     }
 }

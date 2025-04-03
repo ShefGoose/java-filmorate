@@ -9,8 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.validation.Marker;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FilmControllerTest {
     private Validator validator;
     private Film film;
+    private Mpa mpa;
 
     @Autowired
     private FilmController filmController;
@@ -30,6 +32,8 @@ public class FilmControllerTest {
     void setUp() {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
         film = new Film();
+        mpa = new Mpa();
+        mpa.setId(1);
     }
 
     @Test
@@ -38,8 +42,9 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
         assertTrue(violations.isEmpty());
     }
 
@@ -49,8 +54,9 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -65,8 +71,9 @@ public class FilmControllerTest {
         film.setDescription(StringUtils.repeat("d", 201));
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -81,8 +88,9 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(-20);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -97,8 +105,9 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(100);
         film.setReleaseDate(null);
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -113,8 +122,9 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(null);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -129,8 +139,9 @@ public class FilmControllerTest {
         film.setDescription(null);
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(mpa);
 
-        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
 
         assertFalse(violations.isEmpty());
         assertThat(violations).hasSize(1);
@@ -145,7 +156,31 @@ public class FilmControllerTest {
         film.setDescription("Good Film");
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(1700,12,1));
+        film.setMpa(mpa);
 
-        assertThrows(ValidationException.class, () -> filmController.postFilm(film));
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "Дата релиза фильма не может быть раньше 12 декабря 1895 года");
+    }
+
+    @Test
+    void shouldValidateMpaFilmFail() {
+        film.setName("NewFilm");
+        film.setDescription("Good Film");
+        film.setDuration(100);
+        film.setReleaseDate(LocalDate.of(2000, 12, 1));
+        film.setMpa(null);
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, Marker.OnCreate.class);
+
+        assertFalse(violations.isEmpty());
+        assertThat(violations).hasSize(1);
+        assertThat(violations).extracting(ConstraintViolation::getMessage)
+                .containsExactlyInAnyOrder(
+                        "У фильма должен быть указан рейтинг MPA");
     }
 }
